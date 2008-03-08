@@ -1,18 +1,24 @@
+# pQuery - A Perl version of jQuery.
+
 package pQuery;
 use strict;
 use warnings;
 use 5.006001;
-use HTML::TreeBuilder;
+use pQuery::DOM;
 
 use base 'Exporter';
-# use XXX;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 our @EXPORT = qw(pQuery);
 
+our $document;
+
 my $my = {};
 my $lwp_user_agent;
+my $quickExpr = qr/^([^<]*<(.|\s)+>[^>]*)$|^#(\w+)$/;
+my $isSimple = qr/^.[^:#\[\.]*$/;
+my $dom_element_class = 'pQuery::DOM';
 
 sub pQuery {
     return 'pQuery'->new(@_);
@@ -22,74 +28,77 @@ sub new {
     my $class = shift;
     my $self = bless [], $class;
     $my->{$self} = {};
-
-    if (not @_) {
-        return $self;
-    }
-    elsif (@_ == 1 and $_[0] =~ /^\s*</) {
-        return $self->new_from_html(@_);
-    }
-    elsif (@_ == 1 and $_[0] =~ /^\s*(https?|file):/) {
-        return $self->new_from_url(@_);
-    }
-    elsif (@_ == 1 and ref($_[0]) eq 'ARRAY') {
-        @$self = @{$_[0]};
-        return $self;
-    }
-    elsif (@_ == 1 and ref($_[0]) eq 'HTML::Element') {
-        @$self = $_[0];
-        return $self;
-    }
-    else {
-        die "Can't create new pQuery object with these arguments:\n(@_)";
-    }
+    return $self->_init(@_);
 }
 
-sub new_from_url {
-    my $self = shift;
-    my $url = shift;
-    my $response = $self->get($url);
-    if (! $response->is_success) {
+sub _init {
+    my ($self, $selector, $context) = @_;
+
+    $selector ||= $document or return $self;
+
+    if (ref($selector) eq $dom_element_class) {
+        @$self = $selector;
         return $self;
     }
-    return $self->new_from_html($response->content);
-}
+    elsif (not ref($selector)) {
+        my $match = ($selector =~ $quickExpr);
 
-sub new_from_html {
-    my ($self, $html) = @_;
-    @$self = ($self->html_to_dom($html));
+        if ($match and ($1 or not $context)) {
+            if ($1) {
+                $selector = [pQuery::DOM->fromHTML($1)];
+#                 $selector = $self->_clean([$1], $context);
+            }
+            else {
+                my $elem = $document->getElementById($3);
+                if ($elem) {
+                    @$self = $elem;
+                    return $self;
+                }
+                else {
+                    $selector = [];
+                }
+            }
+        }
+        else {
+            if ($selector =~ /^\s*(https?|file):/) {
+                return $document = $self->_new_from_url($selector);
+            }
+            return pQuery($context)->find($selector);
+        }
+    }
+    @$self = (ref($selector) eq 'ARRAY' or ref($selector) eq 'pQuery')
+        ? @$selector
+        : $selector;
     return $self;
 }
 
-sub html_to_dom {
-    my ($self, $html) = @_;
-    my $dom = HTML::TreeBuilder->new;
-    $dom->ignore_ignorable_whitespace(0);
-    $dom->no_space_compacting(1);
-    $dom->parse_content($html);
-    $dom->elementify;
-
-    if ($html =~ /\s*<html\b/) {
-        return $dom;
-    }
-    else {
-        return $dom->{_content}[1]{_content}[0];
-    }
+sub _new_from_url {
+    my $self = shift;
+    my $url = shift;
+    my $response = $self->get($url);
+    return $self
+        unless $response->is_success;
+    @$self = pQuery::DOM->fromHTML($response->content);
+    return $self;
 }
 
 sub html {
     my $self = shift;
-    if (@_) {
-        my $dom = $self->html_to_dom(@_);
-        die "XXX - need to insert dom here";
-    }
     return unless @$self;
+    if (@_) {
+        for (@$self) {
+            next unless ref($_);
+            $_->innerHTML(@_);
+        }
+        return $self;
+    }
+    return $self->[0]->innerHTML(@_);
+}
 
-    my $html = '';
-
-    _to_html($self->[0], \$html);
-
-    return $html;
+sub toHtml {
+    my $self = shift;
+    return unless @$self;
+    return $self->[0]->toHTML;
 }
 
 sub text {
@@ -140,30 +149,6 @@ sub get {
 }
 
 # Helper functions (not methods)
-sub _to_html {
-    my ($elem, $html) = @_;
-    if (ref $elem) {
-        $$html .= '<' . $elem->{_tag};
-        $$html .= qq{ id="$elem->{id}"}
-            if $elem->{id};
-        $$html .= qq{ class="$elem->{class}"}
-            if $elem->{class};
-        for (sort keys %$elem) {
-            next if /^(_|id$|class$)/i;
-            $$html .= qq{ $_="$elem->{$_}"};
-        }
-       
-        $$html .= '>';
-        for my $child (@{$elem->{_content}}) {
-            _to_html($child, $html);
-        }
-        $$html .= '</' . $elem->{_tag} . '>';
-    }
-    else {
-        $$html .= $elem;
-    }
-}
-
 sub _to_text {
     my ($elem, $text) = @_;
     if (ref $elem) {
@@ -203,10 +188,10 @@ pQuery - Perl Port of jQuery.js
     use pQuery;
 
     pQuery("http://google.com/search?q=pquery")
-        ->find("h2.r")
+        ->find("h2")
         ->each(sub {
             my $i = shift;
-            print ($i + 1), ") ", pQuery($_)->text, "\n";
+            print $i + 1, ") ", pQuery($_)->text, "\n";
         });
 
 =head1 DESCRIPTION
@@ -222,8 +207,13 @@ constructor and does different things depending on the arguments you
 give it. This is discussed in the L<CONSTRUCTORS> section below.
 
 A pQuery object acts like an array reference (because, in fact, it is).
-Typically it is an array of HTML::DOM elements, but it can be an array
+Typically it is an array of pQuery::DOM elements, but it can be an array
 of anything.
+
+pQuery::DOM is roughly an attempt to duplicate JavaScript's DOM in
+Perl. It subclasses HTML::TreeBuilder/HTML::Element so there are a
+few differences to be aware of. See the L<pQuery::DOM> documentation
+for details.
 
 Like jQuery, pQuery methods return a pQuery object; either the
 original object or a new derived object. All pQuery L<METHODS> are
@@ -231,31 +221,40 @@ described below.
 
 =head1 CONSTRUCTORS
 
-THe pQuery constructor is an exported function called C<pQuery>. It does
+The pQuery constructor is an exported function called C<pQuery>. It does
 different things depending on the arguments you pass it.
 
 =head2 A URL
 
 If you pass pQuery a URL, it will attempt to get the page and use its
-HTML to create a HTML::DOM object. The pQuery object will contain the
-top level HTML::DOM object.
+HTML to create a pQuery::DOM object. The pQuery object will contain the
+top level pQuery::DOM object.
 
     pQuery("http://google.com");
+
+It will also set the global variable C<$pQuery::document> to the
+resulting DOM object. Future calls to pQuery methods will use this
+document if none other is supplied.
 
 =head2 HTML
 
 If you already have an HTML string, pass it to pQuery and it will create
-a HTML::DOM object. The pQuery object will contain the top level
-HTML::DOM object.
+a pQuery::DOM object. The pQuery object will contain the top level
+pQuery::DOM object.
 
     pQuery("<p>Hello <b>world</b>.</p>");
 
 =head2 Selector String
 
 You can create a pQuery object with a selector string just like in
-jQuery. The problem is that Perl doesn't have a global DOM object lying
-around like JavaScript does. You need to pass the DOM to select on as
-the second parameter. (jQuery also has this second parameter).
+jQuery. The problem is that Perl doesn't have a global document object
+lying around like JavaScript does.
+
+One thing you can do is set the global variable, C<$pQuery::document>,
+to a pQuery::DOM document. This will be used by future selectors.
+
+Another thing you can do is pass the document to select on as the second
+parameter. (jQuery also has this second, context parameter).
 
     pQuery("table.mygrid > td:eq(7)", $dom);
 
@@ -269,7 +268,7 @@ object will be a shallow copy.
 =head2 Array Reference
 
 You can create a pQuery object as an array of anything you want; not
-just HTML::DOM elements. This can be useful to use the C<each> method to
+just pQuery::DOM elements. This can be useful to use the C<each> method to
 iterate over the array.
 
     pQuery(\ @some_array);
@@ -285,7 +284,7 @@ methods that don't need a DOM object.
 =head1 METHODS
 
 This is a reference of all the methods you can call on a pQuery object. They
-are all ported from jQuery.
+are almost entirely ported from jQuery.
 
 =head2 each($sub)
 
@@ -304,11 +303,46 @@ The C<each> method returns the pQuery object that called it.
 
 =head2 find($selector)
 
-This method will search all the HTML::DOM elements of the its caller for
+This method will search all the pQuery::DOM elements of the its caller for
 all sub elements that match the selector string. It will return a new
 pQuery object containing all the elements found.
 
     my $pquery2 = $pquery1->find("h1,h2,h3");
+
+=head2 html() html($html)
+
+This method is akin to the famous JavaScript/DOM function C<innerHTML>.
+
+If called with no arguments, this will return the the B<inner> HTML
+string of the B<first> DOM element in the pQuery object.
+
+If called with an HTML string argument, this will set the inner HTML of all
+the DOM elements in the pQuery object.
+
+=head2 toHtml()
+
+This extremely handy method is not ported from jQuery. Maybe jQuery will
+port it back some day. :)
+
+This function takes no arguments, and returns the B<outer> HTML of the first
+DOM object in the pQuery object. Outer HTML means the HTML of the current
+object and its inner HTML.
+
+For example:
+
+    pQuery('<p>I <b>like</b> pie</p>').HTML();
+
+returns:
+
+    <p>I <b>like</b> pie</p>
+
+while:
+
+    pQuery('<p>I <b>like</b> pie</p>').html();
+
+returns:
+
+    I <b>like</b> pie
 
 =head2 end()
 
@@ -322,6 +356,8 @@ when chaining pQuery methods.
         ->each(sub { ... })   # Do something with the tds
         ->end()               # Go back to the tables selection
         ->each(sub { ... });  # Do something with the tables
+
+NOTE: Not implemented yet. :(
 
 =head2 get($url)
 
@@ -339,7 +375,10 @@ counterparts yet).
 The selector syntax is still very limited. (Single tags, IDs and classes
 only).
 
-There is still much more code to port. Stay tuned...
+Version 0.02 added the pQuery::DOM class which is a huge improvement, and
+should facilitate making the rest of the porting easy.
+
+But there is still much more code to port. Stay tuned...
 
 =head1 AUTHOR
 
