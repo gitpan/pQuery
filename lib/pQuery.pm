@@ -9,7 +9,7 @@ use Carp;
 
 use base 'Exporter';
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 our $document;
 *pQuery = \$document;
@@ -68,7 +68,8 @@ sub _init {
 
         if ($match and ($1 or not $context)) {
             if ($1) {
-                $selector = [pQuery::DOM->fromHTML($1)];
+                my $html = $this->_clean($1);
+                $selector = [pQuery::DOM->fromHTML($html)];
 #                 $selector = $this->_clean([$1], $context);
             }
             else {
@@ -93,7 +94,7 @@ sub _init {
                     or croak "Can't open file '$selector' for input:\n$!";
                 my $html = do {local $/; <FILE>};
                 close FILE;
-                $html =~ s/^\s*<!DOCTYPE\s.*?>\s*//s;
+                $html = $this->_clean($html);
                 $selector = [$document = pQuery::DOM->fromHTML($html)];
             }
             else {
@@ -106,6 +107,13 @@ sub _init {
         ? @$selector
         : $selector;
     return $this;
+}
+
+sub _clean {
+    my ($this, $html) = @_;
+    $html =~ s/^\s*<\?xml\s.*?>\s*//s;
+    $html =~ s/^\s*<!DOCTYPE\s.*?>\s*//s;
+    return $html;
 }
 
 sub pquery { return $VERSION }
@@ -170,7 +178,7 @@ sub text {
         push @text, $text;
     });
 
-    return wantarray ? @text : join(' ', @text);
+    return wantarray ? @text : join(' ', grep /\S/, @text);
 }
 
 sub wrapAll { # (html)
@@ -383,10 +391,106 @@ sub _grep {
 ################################################################################
 # Selector functions
 ################################################################################
-my $chars = '(?:[\w\x{128}-\x{FFFF}_-]|\\.)';
+my $chars = '(?:[\w\x{128}-\x{FFFF}*_-]|\\.)';
 my $quickChild = qr/^>\s*($chars+)/;
 my $quickId = qr/^($chars+)(#)($chars+)/;
 my $quickClass = qr/^(([#.]?)($chars*))/;
+
+my $expr = {
+    # XXX Can't figure out how to create tests for these yet :(
+    ""  => sub {
+        die 'pQuery selector error #1001. Please notify ingy@cpan.org';
+    },
+    "#" => sub {
+        die 'pQuery selector error #1002. Please notify ingy@cpan.org';
+    },
+    ":" => {
+        # Position Checks
+        lt => sub { return $_[1] < $_[2][3] },
+        gt => sub { return $_[1] > $_[2][3] },
+        nth => sub { return $_[2][3] == $_[1] },
+        eq => sub { return $_[2][3] == $_[1] },
+        first => sub { return $_[1] == 0 },
+        last => sub { return $_[1] == $#{$_[3]} },
+        even => sub { return $_[1] % 2 == 0 },
+        odd => sub { return $_[1] % 2 },
+
+        # Child Checks
+        "first-child" => sub {
+            return $_[0]->parentNode->getElementsByTagName("*")->[0] == $_[0];
+        },
+        "last-child" => sub {
+            return pQuery->_nth(
+                $_[0]->parentNode->lastChildRef,
+                1,
+                "previousSiblingRef"
+            ) == $_[0];
+        },
+        "only-child" => sub {
+            return ! pQuery->_nth(
+                $_[0]->parentNode->lastChildRef,
+                2,
+                "previousSiblingRef"
+            );
+        },
+
+        # Parent Checks
+        parent => sub { return $_[0]->firstChild ? 1 : 0 },
+        empty  => sub { return $_[0]->firstChild ? 0 : 1 },
+
+        # Text Check
+        contains => sub { return index(pQuery($_[0])->text, $_[2][3]) >= 0 },
+
+# XXX Finish porting these if it makes sense...
+#             // Visibility
+#             visible: function(a){return "hidden"!=a.type&&jQuery.css(a,"display")!="none"&&jQuery.css(a,"visibility")!="hidden";},
+#             hidden: function(a){return "hidden"==a.type||jQuery.css(a,"display")=="none"||jQuery.css(a,"visibility")=="hidden";},
+# 
+#             // Form attributes
+#             enabled: function(a){return !a.disabled;},
+#             disabled: function(a){return a.disabled;},
+#             checked: function(a){return a.checked;},
+#             selected: function(a){return a.selected||jQuery.attr(a,"selected");},
+# 
+#             // Form elements
+#             text: function(a){return "text"==a.type;},
+#             radio: function(a){return "radio"==a.type;},
+#             checkbox: function(a){return "checkbox"==a.type;},
+#             file: function(a){return "file"==a.type;},
+#             password: function(a){return "password"==a.type;},
+#             submit: function(a){return "submit"==a.type;},
+#             image: function(a){return "image"==a.type;},
+#             reset: function(a){return "reset"==a.type;},
+#             button: function(a){return "button"==a.type||jQuery.nodeName(a,"button");},
+#             input: function(a){return /input|select|textarea|button/i.test(a.nodeName);},
+
+
+        # :has()
+# XXX - The first form should work. Indicates that context is messed up.
+#         has => sub { return pQuery->find($_[2][3], $_[0])->length ? 1 : 0 },
+        has => sub { return pQuery($_[0])->find($_[2][3])->length ? 1 : 0 },
+
+        # :header
+        header => sub { return $_[0]->nodeName =~ /^h[1-6]$/i },
+    },
+};
+
+# The regular expressions that power the parsing engine
+my $parse = [
+    # Match: [@value='test'], [@foo]
+    qr/^(\[) *@?([\w-]+) *([!*$^~=]*) *('?"?)(.*?)\4 *\]/,
+
+    # Match: :contains('foo')
+    qr/^(:)([\w-]+)\("?'?(.*?(\(.*?\))?[^(]*?)"?'?\)/,
+
+    # Match: :even, :last-chlid, #id, .class
+    qr/^([:.#]*)($chars+)/,
+];
+
+sub _multiFilter {
+    # XXX - Port me.
+}
+
 sub _find {
     my ($this, $t, $context) = @_;
 
@@ -533,7 +637,7 @@ sub _find {
         }
     }
 #     $ret = [] if $t;
-    die "selector error" if $t;
+    die "selector error: $t" if $t;
 
     shift(@$ret) if $ret and @$ret and $context == $ret->[0];
 
@@ -553,33 +657,6 @@ sub _classFilter {
     }
     return $tmp;
 }
-
-# The regular expressions that power the parsing engine
-my $parse = [
-    # Match: [@value='test'], [@foo]
-    qr/^(\[) *@?([\w-]+) *([!*$^~=]*) *('?"?)(.*?)\4 *\]/,
-
-    # Match: :contains('foo')
-    qr/^(:)([\w-]+)\("?'?(.*?(\(.*?\))?[^(]*?)"?'?\)/,
-
-    # Match: :even, :last-chlid, #id, .class
-    qr/^([:.#]*)($chars+)/,
-];
-
-my $expr = {
-    ":" => {
-        lt => sub { return $_[1] < $_[2][3] },
-        gt => sub { return $_[1] > $_[2][3] },
-        eq => sub { return $_[2][3] == $_[1] },
-        first => sub { return $_[1] == 0 },
-        last => sub { return $_[1] == $#{$_[3]} },
-        even => sub { return $_[1] % 2 == 0 },
-        odd => sub { return $_[1] % 2 },
-
-        contains => sub { index(pQuery($_[0])->text, $_[2][3]) >= 0 },
-        header => sub { return $_[0]->nodeName =~ /^h[1-6]$/i },
-    },
-};
 
 sub _filter {
     my ($this, $t, $r, $not) = @_;
@@ -615,14 +692,15 @@ sub _filter {
             my ($tmp, $type) = ([], $m->[3]);
 
             for (my ($i, $rl) = (0, scalar(@$r)); $i < $rl; $i++) {
-                my ($a, $z) = ($r->[$i], $this->_props->[$m->[2]] || $m->[2]);
+                my $a = $r->[$i];
+                my $z = $a->{($this->_props->{$m->[2]} || $m->[2])};
 
                 if (not defined $z or $m->[2] =~ /href|src|selected/) {
                     $z = $this->attr($a, $m->[2]) || '';
                 }
 
                 if (
-                    (
+                    ((
                         $type eq "" and $z or
                         $type eq "=" and $z eq $m->[5] or
                         $type eq "!=" and $z ne $m->[5] or
@@ -630,14 +708,14 @@ sub _filter {
                         $type eq '$=' and substr($z, (0-length($m->[5]))) or
                         ($type eq "*=" or $type eq "~=") and
                             index($z, $m->[5]) >= 0
-                    ) ^ $not
+                    ) ? 1 : 0) ^ ($not ? 1 : 0)
                 ) { push @$tmp, $a }
             }
 
             $r = $tmp;
         }
         elsif ($m->[1] eq ":" && $m->[2] eq "nth-child") {
-            # XXX - Finish porting this!
+            # XXX - Finish porting this. Not sure how useful it is though...
         }
         else {
             my $fn = $expr->{$m->[1]};
@@ -658,6 +736,48 @@ sub _filter {
         }
     }
     return { r => $r, t => $t };
+}
+
+sub _dir {
+    # XXX - Port me.
+}
+
+sub _nth {
+    my ($this, $cur, $result, $dir, $elem) = @_;
+    $result ||= 1;
+    my $num = 0;
+
+    for (; $cur; $cur = $cur->$dir) {
+        last if (ref($cur) and $cur->nodeType == 1 and ++$num == $result);
+    }
+
+    return $cur;
+}
+
+sub _sibling {
+    # XXX - Port me.
+}
+
+sub _props {
+    return {
+        for => "htmlFor",
+        class => "className",
+#         float => styleFloat,
+#         cssFloat => styleFloat,
+#         styleFloat => styleFloat,
+        innerHTML => "innerHTML",
+        className => "className",
+        value => "value",
+        disabled => "disabled",
+        checked => "checked",
+        readonly => "readOnly", 
+        selected => "selected",
+        maxlength => "maxLength",
+        selectedIndex => "selectedIndex",
+        defaultValue => "defaultValue",
+        tagName => "tagName",
+        nodeName => "nodeName"
+    };
 }
 
 ################################################################################
@@ -913,11 +1033,11 @@ are almost entirely ported from jQuery.
 
 Returns the version number of the pQuery module.
 
-=size()
+=head2 size()
 
 Returns the number of elements in the pQuery object.
 
-=length()
+=head2 length()
 
 Also returns the number of elements in the pQuery object.
 

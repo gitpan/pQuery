@@ -159,6 +159,7 @@ sub getElementsByTagName {
     my ($self, $tag) = @_;
     my $found = [];
     _find($self, $found, sub { $_->{_tag} eq $tag or $tag eq "*" });
+    shift @$found if @$found and $found->[0] == $self;
     return $found;
 }
 
@@ -236,6 +237,22 @@ sub lastChild {
     return $_[0]->{_content}[-1];
 }
 
+sub firstChildRef {
+    my $content = $_[0]->{_content} or return;
+    for (my $i = 0; $i < @$content; $i++) {
+        return $content->[$i] if ref $content->[$i];
+    }
+    return;
+}
+
+sub lastChildRef {
+    my $content = $_[0]->{_content} or return;
+    for (my $i = @$content - 1; $i >= 0; $i--) {
+        return $content->[$i] if ref $content->[$i];
+    }
+    return;
+}
+
 sub appendChild {
     my ($self, $elem) = @_;
     return unless defined $elem;
@@ -246,6 +263,26 @@ sub appendChild {
 
 sub previousSibling {
     die "pQuery::DOM does not support the previousSibling method";
+}
+
+sub nextSiblingRef {
+    my $content = $_[0]->parentNode->{_content} or return;
+    my $found = 0;
+    for (my $i = 0; $i < @$content; $i++) {
+        return $content->[$i] if $found and ref $content->[$i];
+        $found = 1 if ref($content->[$i]) and $content->[$i] == $_[0];
+    }
+    return;
+}
+
+sub previousSiblingRef {
+    my $content = $_[0]->parentNode->{_content} or return;
+    my $found = 0;
+    for (my $i = @$content - 1; $i >= 0; $i--) {
+        return $content->[$i] if $found and ref $content->[$i];
+        $found = 1 if ref($content->[$i]) and $content->[$i] == $_[0];
+    }
+    return;
 }
 
 sub nextSibling {
@@ -328,7 +365,9 @@ HTML::TreeBuilder and HTML::Element. As such, text nodes are just
 strings and therefore cannot have methods called on them.
 
 This implies that the DOM methods previousSibling and nextSibling
-wouldn't really work correctly. Therefore they are not implemented.
+wouldn't really work correctly. Therefore they are not
+implemented. However, previousSiblingRef and nextSiblingRef are
+implemented. See below.
 
 To deal with children, use the childNodes method which returns a list
 of all the child nodes. Then you can use standard Perl idioms to
@@ -457,6 +496,35 @@ Returns the node's last child node. May be a string (aka a text node).
 =item appendChild($node)
 
 Adds a node (or a string) to the end of the current node's children.
+
+=back
+
+=head2 Non-standard Object Methods
+
+These methods are variants of standard methods, but guarantee that the
+result, if found, is another pQuery::DOM node.
+
+=over
+
+=item firstChildRef()
+
+Returns the first child node which is actually a pQuery::DOM node and
+not a string.
+
+=item lastChildRef()
+
+Returns the last child node which is actually a pQuery::DOM node and
+not a string.
+
+=item previousSiblingRef()
+
+Returns the previous sibling node which is actually a pQuery::DOM node
+and not a string.
+
+=item nextSiblingRef()
+
+Returns the next sibling node which is actually a pQuery::DOM node and
+not a string.
 
 =back
 
