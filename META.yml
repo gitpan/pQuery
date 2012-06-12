@@ -3,11 +3,12 @@ abstract: 'A port of jQuery.js to Perl'
 author:
   - 'Ingy döt Net <ingy@cpan.org>'
 build_requires:
-  ExtUtils::MakeMaker: 6.42
+  ExtUtils::MakeMaker: 6.59
 configure_requires:
-  ExtUtils::MakeMaker: 6.42
+  ExtUtils::MakeMaker: 6.59
 distribution_type: module
-generated_by: 'Module::Install version 1.01'
+dynamic_config: 1
+generated_by: 'Module::Install version 1.06'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -23,7 +24,10 @@ requires:
   HTML::TreeBuilder: 4.2
   perl: 5.8.3
 resources:
-  homepage: http://github.com/ingydotnet/pquery-pm/tree
+  homepage: https://github.com/ingydotnet/pquery-pm/tree
   license: http://dev.perl.org/licenses/
-  repository: git://github.com/ingydotnet/pquery-pm.git
-version: 0.08
+  repository:
+    type: git
+    url: git://github.com/ingydotnet/pquery-pm.git
+    web: https://github.com/ingydotnet/pquery-pm/tree
+version: 0.09
