@@ -21,7 +21,7 @@ DESCRIPTION
     pQuery exports a single function called "pQuery". (Actually, it also
     exports the special "PQUERY" function. Read below.) This function acts a
     constructor and does different things depending on the arguments you
-    give it. This is discussed in the CONSTRUCTORS section below.
+    give it. This is discussed in the "CONSTRUCTORS" section below.
 
     A pQuery object acts like an array reference (because, in fact, it is).
     Typically it is an array of pQuery::DOM elements, but it can be an array
@@ -29,11 +29,12 @@ DESCRIPTION
 
     pQuery::DOM is roughly an attempt to duplicate JavaScript's DOM in Perl.
     It subclasses HTML::TreeBuilder/HTML::Element so there are a few
-    differences to be aware of. See the pQuery::DOM documentation for
+    differences to be aware of. See the "pQuery::DOM" documentation for
     details.
 
     Like jQuery, pQuery methods return a pQuery object; either the original
-    object or a new derived object. All pQuery METHODS are described below.
+    object or a new derived object. All pQuery "METHODS" are described
+    below.
 
 THE ROYAL PQUERY
     The power of jQuery is that single method calls can apply to many DOM
@@ -126,99 +127,100 @@ METHODS
     This is a reference of all the methods you can call on a pQuery object.
     They are almost entirely ported from jQuery.
 
-  pquery()
-    Returns the version number of the pQuery module.
+    "pquery()"
+        Returns the version number of the pQuery module.
 
-  size()
-    Returns the number of elements in the pQuery object.
+    "size()"
+        Returns the number of elements in the pQuery object.
 
-  length()
-    Also returns the number of elements in the pQuery object.
+    "length()"
+        Also returns the number of elements in the pQuery object.
 
-  each($sub)
-    This method takes a subroutine reference and calls the subroutine once
-    for each member of the pQuery object that called "each". When the
-    subroutine is called it is passed an integer count starting at 0 at
-    incremented once for each call. It is also passed the current member of
-    the pQuery object in $_.
+    "each($sub)"
+        This method takes a subroutine reference and calls the subroutine
+        once for each member of the pQuery object that called "each". When
+        the subroutine is called it is passed an integer count starting at 0
+        at incremented once for each call. It is also passed the current
+        member of the pQuery object in $_.
 
-        pQuery("td", $dom)->each(sub {
-            my $i = shift;
-            print $i, " => ", pQuery($_)->text(), "\n";
-        });
+            pQuery("td", $dom)->each(sub {
+                my $i = shift;
+                print $i, " => ", pQuery($_)->text(), "\n";
+            });
 
-    The "each" method returns the pQuery object that called it.
+        The "each" method returns the pQuery object that called it.
 
-  EACH($sub)
-    This method can only be called on PQUERY objects. The sub is called once
-    for every pQuery object within the PQUERY object. If you call "each()"
-    on a PQUERY object, it iterates on all the DOM objects of each pQuery
-    object (as you would expect).
+    "EACH($sub)"
+        This method can only be called on PQUERY objects. The sub is called
+        once for every pQuery object within the PQUERY object. If you call
+        "each()" on a PQUERY object, it iterates on all the DOM objects of
+        each pQuery object (as you would expect).
 
-  find($selector)
-    This method will search all the pQuery::DOM elements of the its caller
-    for all sub elements that match the selector string. It will return a
-    new pQuery object containing all the elements found.
+    "find($selector)"
+        This method will search all the pQuery::DOM elements of the its
+        caller for all sub elements that match the selector string. It will
+        return a new pQuery object containing all the elements found.
 
-        my $pquery2 = $pquery1->find("h1,h2,h3");
+            my $pquery2 = $pquery1->find("h1,h2,h3");
 
-  html() html($html)
-    This method is akin to the famous JavaScript/DOM function "innerHTML".
+    "html() html($html)"
+        This method is akin to the famous JavaScript/DOM function
+        "innerHTML".
 
-    If called with no arguments, this will return the the inner HTML string
-    of the first DOM element in the pQuery object.
+        If called with no arguments, this will return the the inner HTML
+        string of the first DOM element in the pQuery object.
 
-    If called with an HTML string argument, this will set the inner HTML of
-    all the DOM elements in the pQuery object.
+        If called with an HTML string argument, this will set the inner HTML
+        of all the DOM elements in the pQuery object.
 
-  toHtml()
-    This extremely handy method is not ported from jQuery. Maybe jQuery will
-    port it back some day. :)
+    "toHtml()"
+        This extremely handy method is not ported from jQuery. Maybe jQuery
+        will port it back some day. :)
 
-    This function takes no arguments, and returns the outer HTML of the
-    first DOM object in the pQuery object. Outer HTML means the HTML of the
-    current object and its inner HTML.
+        This function takes no arguments, and returns the outer HTML of the
+        first DOM object in the pQuery object. Outer HTML means the HTML of
+        the current object and its inner HTML.
 
-    For example:
+        For example:
 
-        pQuery('<p>I <b>like</b> pie</p>')->toHtml;
+            pQuery('<p>I <b>like</b> pie</p>')->toHtml;
 
-    returns:
+        returns:
 
-        <p>I <b>like</b> pie</p>
+            <p>I <b>like</b> pie</p>
 
-    while:
+        while:
 
-        pQuery('<p>I <b>like</b> pie</p>')->html();
+            pQuery('<p>I <b>like</b> pie</p>')->html();
 
-    returns:
+        returns:
 
-        I <b>like</b> pie
+            I <b>like</b> pie
 
-  end()
-    Revert the most recent 'destructive' operation, changing the set of
-    matched elements to its previous state (right before the destructive
-    operation). This method is useful for getting back to a prior context
-    when chaining pQuery methods.
+    "end()"
+        Revert the most recent 'destructive' operation, changing the set of
+        matched elements to its previous state (right before the destructive
+        operation). This method is useful for getting back to a prior
+        context when chaining pQuery methods.
 
-        pQuery("table", $dom)     # Select all the tables
-            ->find("td")          # Select all the tds
-            ->each(sub { ... })   # Do something with the tds
-            ->end()               # Go back to the tables selection
-            ->each(sub { ... });  # Do something with the tables
+            pQuery("table", $dom)     # Select all the tables
+                ->find("td")          # Select all the tds
+                ->each(sub { ... })   # Do something with the tds
+                ->end()               # Go back to the tables selection
+                ->each(sub { ... });  # Do something with the tables
 
-  get($index) get($url)
-    If this method is passed an integer, it will return that specific
-    element from the array of elements in the pQuery object.
+    "get($index) get($url)"
+        If this method is passed an integer, it will return that specific
+        element from the array of elements in the pQuery object.
 
-    Givn a URL, this method will fetch the HTML content of the URL and
-    return a HTML::Response object.
+        Givn a URL, this method will fetch the HTML content of the URL and
+        return a HTML::Response object.
 
-        my $html = pQuery->get("http://google.com")->content;
+            my $html = pQuery->get("http://google.com")->content;
 
-  index($elem)
-    This method returns the index number of its argument if the elem is in
-    the current pQuery object. Otherwise it returns -1.
+    "index($elem)"
+        This method returns the index number of its argument if the elem is
+        in the current pQuery object. Otherwise it returns -1.
 
 UNDER CONSTRUCTION
     This module is still being written. The documented methods all work as
@@ -237,10 +239,10 @@ AUTHOR
     Ingy döt Net <ingy@cpan.org>
 
 COPYRIGHT AND LICENSE
-    Copyright (c) 2008, 2011. Ingy döt Net.
+    Copyright (c) 2008-2014. Ingy döt Net.
 
     This program is free software; you can redistribute it and/or modify it
     under the same terms as Perl itself.
 
-    See http://www.perl.com/perl/misc/Artistic.html
+    See <http://www.perl.com/perl/misc/Artistic.html>
 
