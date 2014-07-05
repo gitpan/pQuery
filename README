@@ -222,6 +222,10 @@ METHODS
         This method returns the index number of its argument if the elem is
         in the current pQuery object. Otherwise it returns -1.
 
+    "reset()"
+        This method releases resources associated with pQuery and prevents
+        memory leaks.
+
 UNDER CONSTRUCTION
     This module is still being written. The documented methods all work as
     documented (but may not be completed ports of their jQuery counterparts
