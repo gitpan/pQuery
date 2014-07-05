@@ -27,6 +27,7 @@ t/html.t
 t/ideas
 t/misc.t
 t/release-pod-syntax.t
+t/reset.t
 t/rt-cpan-36104.t
 t/selectors.t
 t/spreadily.html
