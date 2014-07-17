@@ -37,6 +37,11 @@
             "HTML::TreeBuilder" : "0",
             "perl" : "v5.8.1"
          }
+      },
+      "test" : {
+         "requires" : {
+            "Spiffy" : "0"
+         }
       }
    },
    "release_status" : "stable",
@@ -51,6 +56,6 @@
          "web" : "https://github.com/ingydotnet/pquery-pm"
       }
    },
-   "version" : "0.13"
+   "version" : "0.14"
 }
 
