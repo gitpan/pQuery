@@ -22,10 +22,7 @@ my %WriteMakefileArgs = (
   "PREREQ_PM" => {
     "HTML::TreeBuilder" => 0
   },
-  "TEST_REQUIRES" => {
-    "Spiffy" => 0
-  },
-  "VERSION" => "0.14",
+  "VERSION" => "0.15",
   "test" => {
     "TESTS" => "t/*.t"
   }
@@ -33,8 +30,7 @@ my %WriteMakefileArgs = (
 
 
 my %FallbackPrereqs = (
-  "HTML::TreeBuilder" => 0,
-  "Spiffy" => 0
+  "HTML::TreeBuilder" => 0
 );
 
 
