@@ -34,7 +34,7 @@
       },
       "runtime" : {
          "requires" : {
-            "HTML::TreeBuilder" : "0",
+            "HTML::TreeBuilder" : "4.2",
             "perl" : "v5.8.1"
          }
       }
@@ -51,6 +51,6 @@
          "web" : "https://github.com/ingydotnet/pquery-pm"
       }
    },
-   "version" : "0.20"
+   "version" : "0.21"
 }
 

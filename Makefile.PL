@@ -20,9 +20,9 @@ my %WriteMakefileArgs = (
   "LICENSE" => "perl",
   "NAME" => "pQuery",
   "PREREQ_PM" => {
-    "HTML::TreeBuilder" => 0
+    "HTML::TreeBuilder" => "4.2"
   },
-  "VERSION" => "0.20",
+  "VERSION" => "0.21",
   "test" => {
     "TESTS" => "t/*.t"
   }
@@ -30,7 +30,7 @@ my %WriteMakefileArgs = (
 
 
 my %FallbackPrereqs = (
-  "HTML::TreeBuilder" => 0
+  "HTML::TreeBuilder" => "4.2"
 );
 
 
