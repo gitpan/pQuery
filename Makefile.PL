@@ -22,7 +22,7 @@ my %WriteMakefileArgs = (
   "PREREQ_PM" => {
     "HTML::TreeBuilder" => 0
   },
-  "VERSION" => "0.15",
+  "VERSION" => "0.16",
   "test" => {
     "TESTS" => "t/*.t"
   }
