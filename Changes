@@ -1,3 +1,6 @@
+0.22 Sat Aug 16 16:44:44 PDT 2014
+ - Change testdir to t
+
 0.21 Sat Aug 16 15:50:00 PDT 2014
  - Remove versions from module use
 
